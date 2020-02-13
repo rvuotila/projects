@@ -1,0 +1,120 @@
+from keras.models import Model
+from keras.layers import Activation, Input, concatenate, Dropout, Dense, Flatten
+from keras.layers GlobalAveragePooling2D
+from keras.utils import to_categorical
+from keras.models import Sequential
+from keras.applications.inception_resnet_v2 import InceptionResNetV2
+from sklearn.model_selection import train_test_split
+import csv
+import os
+import matplotlib.pyplot as plt
+import cv2
+import numpy as np
+from tqdm import tqdm
+from sklearn.metrics import accuracy_score
+from sklearn import svm
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+
+
+
+# Kirjoitetaan ylös luokkien nimet
+class_names = sorted(os.listdir(......\Harj_part1\train\train"))
+
+# Ominaisuuksien tunnistaminen tehtiin valmiiksi opetetulla mallilla. 
+base_model = InceptionResNetV2(input_shape = (299,299,3),include_top = False, weights = "imagenet")
+
+in_tensor = base_model.inputs[0]
+out_tensor = base_model.outputs[0]
+out_tensor = GlobalAveragePooling2D()(out_tensor)
+model = Model(inputs = [in_tensor], outputs = [out_tensor])
+model.compile(loss = "categorical_crossentropy", optimizer = "sgd")
+
+y=[]
+X=[]
+
+#Kuvat luetaan suoraan tiedostosta ja ominaisuudet tallennetaan. Ennustamista ei vielä suoriteta.
+#Kuvien määrä tuplattiin kääntämällä ne ympäri
+class_names = sorted(os.listdir(.......\Harj_part1\train\train"))
+for root, dirs, files in os.walk(.......\Harj_part1\train\train"):
+    for name in tqdm(sorted(files)):
+            if name.endswith(".jpg"):
+                
+                img = plt.imread(root + os.sep + name)
+                img = cv2.resize(img,(299,299))
+                img = img.astype(np.float32)
+                img /= 255
+
+                x = model.predict(img[np.newaxis, ...])[0]
+                X.append(x)
+                
+                img = cv2.flip(img, 1)
+                
+                x = model.predict(img[np.newaxis, ...])[0]
+                X.append(x)
+
+                label = root.split(os.sep)[-1]           
+                y.append(class_names.index(label))
+                y.append(class_names.index(label))
+
+
+y=np.array(y)
+X=np.array(X)
+
+#Sovitetaan koneoppimisen malleja ja verrataan niiden tarkkuuksia
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+SVM = svm.SVC().fit(X_train, y_train)
+SVM_prediction = SVM.predict(X_test)
+
+KNN = KNeighborsClassifier(n_neighbors=3).fit(X_train, y_train)
+KNN_prediction = KNN.predict(X_test)
+
+LDA = LinearDiscriminantAnalysis().fit(X_train, y_train)
+LDA_prediction = LDA.predict(X_test)
+
+LR = LogisticRegression().fit(X_train, y_train)
+LR_prediction = LR.predict(X_test)
+
+RF = RandomForestClassifier(n_estimators=50).fit(X_train, y_train)
+RF_prediction = RF.predict(X_test)
+
+SVM_score = accuracy_score(SVM_prediction, y_test)
+KNN_score = accuracy_score(KNN_prediction, y_test)
+LDA_score = accuracy_score(LDA_prediction, y_test)
+LR_score = accuracy_score(LR_prediction, y_test)
+RF_score = accuracy_score(RF_prediction, y_test)
+
+
+#Koulutetaan neuroverkko
+
+batch_size = 128
+epochs = 100
+
+#Luokkien määrä 17
+y_train = to_categorical(y_train,17)
+y_test = to_categorical(y_test,17)
+
+classificator = Sequential()
+
+classificator.add(Dense(100, input_shape=(X_train[0].shape), activation = "relu"))
+classificator.add(Dense(17, activation = "softmax"))
+
+classificator.compile(optimizer = "adam", loss = "categorical_crossentropy", metrics = ["accuracy"])
+classificator.fit(X_train, y_train, batch_size = batch_size, epochs = epochs)
+
+NN_prediction = classificator.predict_classes(X_test)
+NN_score = accuracy_score(NN_prediction, y_test)
+
+
+#Tällä kirjoitettiin ennustus csv-tiedostoksi
+i=0
+with open("submission.csv", mode='w', newline="") as kohdelista:
+    rivi_writer = csv.writer(kohdelista, delimiter=",")
+    rivi_writer.writerow(["Id","Category"])
+    for rivi in RF_prediction:
+        rivi_writer.writerow([i,class_names[rivi]])
+        i=i+1
+
