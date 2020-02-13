@@ -1,0 +1,45 @@
+import datetime
+import calendar
+import requests
+import csv
+
+
+
+hallit = {"Linnakallio": (1, (1, 2)),
+          "Messukyla": (2, (3, 4, 5, 6))}
+
+kellonajat = ["17:00:00", "18:00:00", "19:00:00", "20:00:00"]
+
+
+vuorot = {}
+for key in hallit:
+    halli = hallit[key][0]
+    for kentta in hallit[key][1]:
+        for kellonaika in kellonajat:
+            for paiva in range(10):
+                pvm = datetime.date.today() + datetime.timedelta(days=paiva)
+                if pvm.weekday() != 4 and pvm.weekday() != 5 and pvm.weekday() != 6:
+                    URL = "https://vj.slsystems.fi/padeltampere/ftpages/ft-varaus-input-01.php?laji="+str(halli)+"&res=" + \
+                          str(kentta) + "&pvm=" + str(pvm) + "&klo=" + str(kellonaika) + "&kesto=01:00:00"
+                    response = requests.get(URL)
+                    if response.text != "Paallekkainen varaus, palaa takaisin.":
+                        if "name=phinta value=36" in response.text:
+                            vuorot[URL] = (kellonaika, calendar.day_name[pvm.weekday()], "{}.{}".format(pvm.day,pvm.month), key)
+
+nykyinen = []
+with open("padel.csv", mode='r', newline="") as kohdelista:
+    csv_reader = csv.reader(kohdelista, delimiter=';')
+    for rivi in csv_reader:
+        nykyinen.append(rivi)
+
+uudet = []
+for key in vuorot:
+    vuoro = list(vuorot[key])
+    if vuoro not in nykyinen:
+        uudet.append((vuorot[key], key))
+
+
+with open("padel.csv", mode='w', newline="") as kohdelista:
+    kohde_writer = csv.writer(kohdelista, delimiter=';')
+    for key in vuorot:
+        kohde_writer.writerow(vuorot[key])
