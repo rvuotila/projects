@@ -1,0 +1,68 @@
+from bs4 import BeautifulSoup
+import csv
+import requests
+
+kaupunki = str(input("Valitse kaupunki: "))
+#kaupunki = "jyvaskyla"
+
+headers = "osoite", "tyyppi", "hinta", "koko", "rakennusvuosi", "linkki"
+with open('{}.csv'.format(kaupunki), mode='w', newline="") as kohdelista:
+    kaupunki_writer = csv.writer(kohdelista, delimiter=';')
+    kaupunki_writer.writerow(headers)
+
+sivu = 1
+URLS = []
+
+totta = True
+while totta:
+    URL = "https://www.etuovi.com/myytavat-asunnot/" + kaupunki + "?sivu=" + str(sivu)
+    response = requests.get(URL).text
+    soup = BeautifulSoup(response, 'html.parser')
+
+    #tässä on tutkittu HTML-tageja ja mahdollisimman yksinkertaisesti yritetty etsiä haluttu tieto.
+    for kohde in soup.findAll(attrs={"class":"ListPage__cardContainer__39dKQ"}):
+
+        osoite = kohde.find("h4").text
+        tyyppi = kohde.find("h5").text
+        tiedot = kohde.find("div", attrs={"class":"styles__itemInfo__oDGHu"})
+        tiedot = tiedot.findAll("span")
+        hinta = tiedot[1].text
+
+        # mikäli tietoja puuttuu, kohteiden yli hypätään
+        try:
+
+            # mikäli asunnon hintaa on laskettu tai kyseessä on huutokauppa,
+            # koko ja rakennusvuosi siirtyvät
+            if tiedot[3].text == "arrow_downward" or tiedot[3].text == "arrow_upward":
+                koko = tiedot[6].text
+                rakennusvuosi = tiedot[9].text
+            else:
+                koko = tiedot[3].text
+                rakennusvuosi = tiedot[6].text
+
+        except IndexError:
+            continue
+
+
+
+        a=kohde.find("a", href=True)
+        linkki=str("https://www.etuovi.com"+a["href"])
+
+        #URL-osoite on kohteille uniikki, joten sen avulla voidaan selvittää onko kohde jo listalla
+        #kun osoite toistuu, looppi keskeytetään
+        if linkki in URLS:
+            totta = False
+            break
+
+        URLS.append(linkki)
+
+        with open("{}.csv".format(kaupunki), mode='a', newline="") as kohdelista:
+            kaupunki_writer = csv.writer(kohdelista, delimiter=';')
+            kaupunki_writer.writerow([osoite, tyyppi, hinta, koko, rakennusvuosi, linkki])
+            kohdelista.close()
+
+    sivu += 1
+
+
+
+
