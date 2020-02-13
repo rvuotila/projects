@@ -1,0 +1,14 @@
+import urllib.parse, requests
+import padel
+
+token = "........................................"
+chat_id = ".............."
+
+vuorot = padel.vuorot
+
+url = 'https://api.telegram.org/bot%s/sendMessage?chat_id=%s&text=%s' % (
+    token, chat_id, urllib.parse.quote_plus(vuorot))
+
+
+if len(vuorot) != 0:
+  _ = requests.get(url, timeout=10)
